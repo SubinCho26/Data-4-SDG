@@ -4,6 +4,9 @@ author: "Connor"
 date: "6/13/2023"
 output: html_document
 ---
+```{r}
+
+```
 
 Load Libraries
 
@@ -14,12 +17,18 @@ library(tidyverse) # allows us to do lots of fundamental data science tasks (ex.
 library(ggcorrplot) # allows us to make correlation plots
 library(plotly) # allows us to make ggplot objects interactive
 library(ggpubr) # stat_cor for correlation coefficients
+library(janitor)
+library(sf) #working with spatial data 
+library(leaflet) #creates interactive maps 
+library (rnaturalearth) # accessing natural earth data
+library(readr)
+library(rnaturalearthdata)
+library(ggrepel) # extend ggplot 2 package for overlapping text labels 
+library(countrycode)
+library(rgdal)
 ```
-
-Read in Data
-
+Read Data
 [ND-GAIN Country Index](https://gain.nd.edu/our-work/country-index/)
-
 The ND-GAIN Country Index summarizes a country's vulnerability to climate change and other global challenges in combination with its readiness to improve resilience. It aims to help governments, businesses and communities better prioritize investments for a more efficient response to the immediate global challenges ahead.
 
 ```{r} 
@@ -71,8 +80,11 @@ ggplot(data = nd_gain_most_recent_wider, aes(x = dependency_on_external_resource
                                      )) +
   geom_histogram(bins = 65, color = "black") +
   theme_minimal()
-```
 
+```{r}
+penguins_lter <- penguins_lter %>% 
+clean_names()
+```
 
 
 2. Scatter Plots
@@ -87,10 +99,35 @@ ggplot(data = nd_gain_most_recent_wider, aes(x = education,
        x = "education",
        y = "human development index") +
   theme_minimal()
+```
 
+
+```{r}
+ggplot(data = penguins_lter_torgerson, aes(x = flipper_length_mm,
+                                     y = body_mass_g,
+                                 color = sex,
+                                 shape = stage)) +
+  geom_point() +
+  labs(title = "Body Mass of Penguins in Torgersen",
+       x = "flipper length",
+       y = "Body Mass (g)") +
+  theme_minimal()
+```
+```{r}
+
+```
 
 ```
 Now add a trend line with geom_smooth() and a p value and correlation coefficient with stat_cor()
+```{r}
+ggplot(data=nd_gain_most_recent_wider, aes(x=ecological_footprint,
+                                            y=human_development_index))+
+geom_point()+
+  labs(title = "Ecological Footprint and Human Development Index, ND-GAIN Most Recent Data",
+       x = "ecological_footprint",
+       y = "human_development_index") +
+  theme_minimal()
+```
 
 
 ```{r}
@@ -103,6 +140,18 @@ ggplot(data = nd_gain_most_recent_wider, aes(x = education,
        x = "education",
        y = "human development index") +
   theme_minimal()
+```
+```{r}
+ggplot(data = nd_gain_most_recent_wider, aes(x = ecological_footprint,
+                                     y = projected_population_change)) +
+  geom_point() +
+  geom_smooth() +
+  stat_cor(method = "pearson", output.type = "text", label.sep='\n') +
+  labs(title = "Ecological Footprint and Projected Population Change, ND-GAIN Most Recent Data",
+       x = "ecological_footprint",
+       y = "projected_population_change") +
+  theme_minimal()
+  
 ```
 
 Now split the plot into two for Small Island Developing States (SIDS) and non-SIDS 
@@ -120,21 +169,28 @@ ggplot(data = nd_gain_most_recent_wider, aes(x = education,
        y = "human development index") +
   theme_minimal()
 ```
-Now add color indicating rural population
 
 ```{r}
-ggplot(data = nd_gain_most_recent_wider, aes(x = education,
-                                     y = human_development_index,
-                                     color = rural_population)) +
+ggplot(data = nd_gain_most_recent_wider, aes(x = ecological_footprint,
+                                     y = projected_population_change)) +
   geom_point() +
   geom_smooth() +
   stat_cor(method = "pearson", output.type = "text", label.sep='\n') +
   facet_wrap(~sids_context) +
-  labs(title = "Education and Human Development Index, ND-GAIN Most Recent Data",
-       x = "education",
-       y = "human development index") +
+  labs(title = "Ecological Footprint and Projected Population Change, ND-GAIN Most Recent Data",
+       x = "ecological footprint",
+       y = "projected population change") +
   theme_minimal()
+  
 ```
+
+
+Now add color indicating rural population
+```
+
+```
+
+```{r}
 
 Lastly, make the plot interactive, adding label = Name so we can see which point is which country by hovering, and by naming it and inputting it into ggplotly()
 
@@ -178,6 +234,37 @@ engagement_impacts_plot <- ggplot(data = nd_gain_most_recent_wider, aes(x = enga
 
 ggplotly(engagement_impacts_plot)
 ```
+```{r}
+engagement_impacts_plot <- ggplot(data = nd_gain_most_recent_wider, aes(x = ecological_footprint, 
+                                             y = projected_population_change, 
+                                             color = sids_context,
+                                             label = Name)) +
+  geom_point() +
+  labs(title = "Ecological Footprint and Projected Population Change",
+       subtitle = "ND-GAIN Data",
+       x = "ecological footprint",
+       y = "projected population change") +
+  theme_minimal()
+
+ggplotly(engagement_impacts_plot)
+
+
+```
+```{r}
+engagement_impacts_plot <- ggplot(data = nd_gain_most_recent_wider, aes(x = urban_concentration, 
+                                             y = projected_change_of_warm_periods, 
+                                             color = sids_context,
+                                             label = Name)) +
+  geom_point() +
+  labs(title = "Projected Change of Warm Periods and Urban Concentration, SIDS",
+       subtitle = "ND-GAIN Data",
+       x = "urban concentration",
+       y = "projected change of warm periods") +
+  theme_minimal()
+
+ggplotly(engagement_impacts_plot)
+
+```
 
 
 
@@ -190,10 +277,19 @@ nd_gain_most_recent_wider_sids <- nd_gain_most_recent_wider %>%
   filter(sids_context == "sids")
 ```
 
+```{r}
+nd_gain_most_recent_wider_non_sids <- nd_gain_most_recent_wider %>%
+  filter(sids_context == "non-sids")
+```
+```{r}
+penguins_lter_Island <- penguins_lter %>%
+  filter(Island == "Dream")
+```
+
 Create Bar Chart showing Food Import Dependency in SIDS 
 
 ```{r}
-ggplot(data = nd_gain_most_recent_wider_sids, aes(x = food_import_dependency, 
+ggplot(data = nd_gain_most_recent_wider_non_sids, aes(x = food_import_dependency, 
                                                   y = reorder(Name,food_import_dependency))) + 
   geom_bar(stat = "identity", fill = "steelblue", color = "black") +
   labs(title = "Food Import Dependency, SIDS",
@@ -202,8 +298,216 @@ ggplot(data = nd_gain_most_recent_wider_sids, aes(x = food_import_dependency,
   theme_minimal() 
   
 ```
+```{r}
+ggplot(data = nd_gain_most_recent_wider_sids, aes(x = projected_change_of_warm_periods, 
+                                                  y = reorder(Name,projected_change_of_warm_periods))) + 
+  geom_bar(stat = "identity", fill = "purple", color = "black") +
+  labs(title = "Projected Change of Warm Periods, SIDS",
+       x = "urban concentration",
+       y = "projected change of warm periods")+
+  theme_minimal() 
+```{r}
+ggplot(data = penguins_lter, aes(x = island, 
+                                 y = 
+  geom_bar(stat = "identity", fill = "steelblue", color = "black") +
+  labs(title = "Date of Eggs and Region",
+       x = "Date Egg",
+       y = "Islands")+
+  theme_minimal() 
+```
+
+Leaflet Map - downloading rnaturalearth
+```{r}
+countries <- ne_countries(scale = "medium", returnclass = "sf")
+```
+
+Plotting Countries 
+```{r}
+plot(countries)
+```
+
+
+
+```{r}
+countries_df <- as.data.frame(countries)
+```
+
+
+```{r}
+plot(countries_df$sovereignt)
+```
+
+```{r}
+
+y_lower_limit <- 0
+y_upper_limit <- 100
+
+```
+
+```{r}
+
+plot(countries, ylim = c(y_lower_limit, y_upper_limit))
+
+
+```
+
+
+
+plot(countries, ylim = c(y_lower_limit, y_upper_limit))
 
 
 
 
+
+Creating a Map - Choropleth
+
+ read data from the CSV file 
+```{r}
+
+data <- read_csv("C:\\Users\\chosu\\OneDrive\\Documents\\Data-4-SDG\\SIDS_Data_Platform_ND-GAIN\\data\\data.csv")
+                         
+```
+ get world country polygons 
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+```
+
+merge country polygons with the data 
+```{r}
+merged_data <- merge(world, data, by.x = "name", by.y = "country", all.x = TRUE )
+```
+
+create a leaflet map 
+```{r}
+map <- leaflet(data = merged_data) %>%
+  addTiles()  
+```
+adding default openstreetmap tiles as the base layer^
+
+add markers with popups for each location and display multiple variables in the popup 
+```{r}
+map <- map %>%
+  addPolygons(
+    fillColor = "blue",
+    fillOpacity = 0.5,
+    color = "white",
+    weight = 1,
+    popup = ~paste("Country ", name, "<br>",
+                   "Sea Level Impact: ", projected_change_of_sea_level_rise_impacts, "<br>",
+                   "Disaster Preparedness: ", disaster_preparedness),
+    label = ~as.character(iso_a3),
+    labelOptions = labelOptions(noHide = TRUE)
+  )
+```
+
+```{r}
+map
+```
+
+Retry 
+
+Get world data: 
+```{r}
+world <- ne_countries(scale="small", returnclass = "sf")
+```
+
+plot an empty world map 
+```{r}
+world %>%
+  ggplot()+
+  geom_sf()
+```
+Change map projection
+ #"+proj=robin", "+proj=moll", "+proj=aeqd", "+proj=goode"
+```{r}
+world %>% 
+  st_transform(crs = "+proj=robin") %>%
+  ggplot() +
+  geom_sf() +
+  theme_minimal()
+```
+
+remove the graticule 
+```{r}
+world %>%
+  st_transform(crs = "+proj=wintri") %>%
+  ggplot() +
+  geom_sf() +
+  coord_sf(datum = NA) +
+  theme_minimal()
+```
+
+prepare data 
+```{r}
+data_raw <- read_csv ("C:\\Users\\chosu\\OneDrive\\Documents\\Data-4-SDG\\SIDS_Data_Platform_ND-GAIN\\data\\data.csv")
+```
+tidy dataset in long format 
+```{r}
+data <- data_raw %>%
+  select(projected_change_of_sea_level_rise_impacts, disaster_preparedness, country) %>%
+  mutate(visited = TRUE )
+```
+
+add iso3 country code
+```{r}
+data_with_iso <- data %>%
+  mutate(Iso3 = countrycode::countrycode(
+    sourcevar = country,
+    origin = "country_code",
+    destination = "iso3c"
+))
+```
+```{r}
+data_with_iso <- data %>%
+  mutate(Iso3 = countrycode(country, "country.name", "iso3c"))
+```
+
+
+Different Method by Connor 
+```{r}
+library(leaflet)
+```
+```{r}
+# Download the shapefile. (note that I store it in a folder called DATA. You have to change that if needed.)
+download.file("http://thematicmapping.org/downloads/TM_WORLD_BORDERS_SIMPL-0.3.zip" , destfile="DATA/world_shape_file.zip")
+# You now have it in your current working directory, have a look!
+
+# Unzip this file. You can do it with R (as below), or clicking on the object you downloaded.
+system("unzip DATA/world_shape_file.zip")
+#  -- > You now have 4 files. One of these files is a .shp file! (TM_WORLD_BORDERS_SIMPL-0.3.shp)
+```
+```{r}
+# Read this shape file with the rgdal library. 
+
+world_spdf <- readOGR(here("SIDS_Data_Platform_ND-GAIN/TM_WORLD_BORDERS_SIMPL-0.3.shp"))
+
+
+# Clean the data object
+library(dplyr)
+world_spdf@data$POP2005[ which(world_spdf@data$POP2005 == 0)] = NA
+world_spdf@data$POP2005 <- as.numeric(as.character(world_spdf@data$POP2005)) / 1000000 %>% round(2)
+# Create a color palette for the map:
+mypalette <- colorNumeric( palette="viridis", domain=world_spdf@data$POP2005, na.color="transparent")
+mypalette(c(45,43))
+
+# Basic choropleth with leaflet?
+m <- leaflet(world_spdf) %>% 
+  addTiles()  %>% 
+  setView( lat=10, lng=0 , zoom=2) %>%
+  addPolygons( fillColor = ~mypalette(POP2005), stroke=FALSE )
+
+m
+```
+```{r}
+dataframe_world <- as.data.frame(world_spdf@data)
+```
+
+```{r}
+data_with_iso <- data_with_iso %>%
+  rename(ISO3 = Iso3)
+
+```
+```{r}
+data_joined <- full_join(data_with_iso, dataframe_world, by = "ISO3")
+```
 
